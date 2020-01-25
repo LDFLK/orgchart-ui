@@ -1,47 +1,84 @@
 import React, {Component} from "react";
-import {css} from "@emotion/core";
-import CircleLoader from "react-spinners/CircleLoader";
 import {withStyles} from '@material-ui/core/styles';
-import {fade} from "@material-ui/core/styles/colorManipulator";
-import Typography from "@material-ui/core/Typography/Typography";
-import InputBase from "@material-ui/core/InputBase/InputBase";
-import Grid from '@material-ui/core/Grid';
-
-const styles = theme => ({
-
-});
+import {render} from "react-dom";
+import {Chart} from "react-google-charts";
+import {getValueByDate} from "../index";
 
 class Sankey extends Component {
 
     constructor(props) {
         super(props);
         this.state = {
+            dates: [],
+            data: [],
         };
-        // this.handleChange = this.handleChange.bind(this);
+        this.collectDatesForTimeline = this.collectDatesForTimeline.bind(this);
     }
+
     componentDidMount() {
-        this.props.getSearchResults("OrgChart:");
+        this.props.getSearchResults("OrgChart-Level1:");
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (prevProps.searchResults !== this.props.searchResults) {
+            this.collectDatesForTimeline();
+        }
+        if (prevProps.searchKey !== this.props.searchKey) {
+            this.collectDatesForTimeline();
+        }
+    }
+
+    collectDatesForTimeline() {
+        const {searchResults} = this.props;
+
+        let dates = [], data = [['From', 'To', 'Weight']];
+
+        function addDateToTimeline(item) {
+            let newDate = item.date;
+            if (!dates.includes(newDate)) {
+                dates.push(newDate);
+            }
+        }
+
+        if (searchResults) {
+            for (let i = 0; i < searchResults.length; i++) {
+                let entity = searchResults[i];
+                entity.attributes.parent.forEach(addDateToTimeline);
+            }
+            dates.sort();
+            for (let j = 0; j < searchResults.length; j++) {
+                let entity = searchResults[j];
+                let from = getValueByDate(entity.attributes.parent, dates[0]);
+                let to = getValueByDate(entity.attributes.parent, dates[1]);
+                let toto = getValueByDate(entity.attributes.parent, dates[2]);
+                if (from && to && to) {
+                    data.push([from + dates[0], to + dates[1], 1]);
+                    data.push([to + dates[1], toto + dates[2], 1]);
+                }
+            }
+        }
+
+        console.log(data);
+
+        this.setState({dates: dates, data: data});
     }
 
     render() {
-        const {classes, searchResults} = this.props;
-        const {searchText} = this.state;
+        const {searchResults} = this.props;
+        const {dates, data} = this.state;
         return (
-            <div>
-                <script src="https://unpkg.com/d3-array@1"></script>
-                <script src="https://unpkg.com/d3-collection@1"></script>
-                <script src="https://unpkg.com/d3-path@1"></script>
-                <script src="https://unpkg.com/d3-shape@1"></script>
-                <script src="https://unpkg.com/d3-sankey@0"></script>
-                <script>
-
-                    var sankey = d3.sankey();
-
-                </script>
-            </div>
+            <Chart
+                style={{margin: 'auto', marginTop: '100px'}}
+                width={'98%'}
+                height={'8000px'}
+                chartType="Sankey"
+                loader={<div>Loading Chart</div>}
+                data={data}
+                rootProps={{'data-testid': '1'}}
+            />
         )
 
     }
 }
 
-export default withStyles(styles)(Sankey);
+export default Sankey;
